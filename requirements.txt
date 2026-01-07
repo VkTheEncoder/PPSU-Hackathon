@@ -3,3 +3,4 @@ ultralytics
 pillow
 groq
 opencv-python-headless
+google-generativeai
