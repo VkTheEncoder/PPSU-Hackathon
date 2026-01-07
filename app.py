@@ -39,20 +39,29 @@ def load_yolo_model():
 
 def get_ai_response(user_question, image, disease_context):
     try:
-        # We use your available Gemini 3 Flash model
+        # Use your available Gemini model
         model = genai.GenerativeModel('gemini-3-flash-preview')
         
         prompt = f"""
-        You are an expert Dermatologist AI. 
-        Analysis Context: A separate YOLO model detected this as '{disease_context}'.
+        You are an intelligent Dermatologist Assistant.
         
-        User Question: {user_question}
+        --- INPUT DATA ---
+        1. **User Image:** (Attached)
+        2. **Automated YOLO Detection:** "{disease_context}" (This is a preliminary AI guess. It might be wrong.)
+        3. **User Query:** "{user_question}"
         
-        Task: 
-        1. Look at the image provided to confirm if the visual symptoms match the detection.
-        2. Answer the user's question professionally.
-        3. If the image looks totally different from '{disease_context}', politely mention that.
-        4. Keep it concise and helpful.
+        --- YOUR INSTRUCTIONS ---
+        1. **Analyze the User's Intent First:** - If they ask "Is this correct?", look at the image and agree or disagree based on your own visual analysis.
+           - If they ask "Tell me the name", give ONLY the name.
+           - If they ask about a DIFFERENT disease, answer about that disease. Do not force the conversation back to "{disease_context}".
+           
+        2. **Visual Verification:** - Trust your own eyes (Gemini Vision) more than the YOLO detection. 
+           - If the image clearly shows "Hives/Dermatographism" but YOLO said "Eczema", politely correct it.
+
+        3. **Response Style:**
+           - Be direct and conversational. 
+           - Do NOT repeat the same disclaimer in every single message unless necessary.
+           - If the user asks for a short answer, keep it under 2 sentences.
         """
         
         # Send text + image to Gemini
