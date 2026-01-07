@@ -40,7 +40,7 @@ def load_yolo_model():
 def get_ai_response(user_question, image, disease_context):
     try:
         # Use Gemini 1.5 Flash (Fast & Multimodal)
-        model = genai.GenerativeModel('gemini-1.5-flash-latest')
+        model = genai.GenerativeModel('gemini-3-flash-preview')
         
         # We give the AI:
         # 1. The Context (What YOLO found)
