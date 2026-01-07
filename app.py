@@ -137,12 +137,23 @@ with st.sidebar:
             st.session_state.detected_disease = disease_name
         
         with st.spinner('2. Generating Medical Report (Gemini)...'):
-            # Step C: Generate the Detailed Report IMMEDIATELY
+            # Step C: Generate the Detailed Report
             initial_report = generate_initial_report(image, disease_name)
             
-            # Step D: Save this report as the FIRST message in chat
+            # --- THE FIX: Create the "Analysis Result" Header ---
+            analysis_header = f"""
+### 🔬 Analysis Result
+**YOLO Detection:** {disease_name}
+**Confidence:** {confidence*100:.1f}%
+
+---
+"""
+            # Combine the Header + The Gemini Report
+            full_response = analysis_header + initial_report
+            
+            # Step D: Save this COMBINED text as the first message
             st.session_state.messages = [
-                {"role": "assistant", "content": initial_report}
+                {"role": "assistant", "content": full_response}
             ]
             st.rerun() # Refresh to show the report
 
