@@ -5,7 +5,7 @@ from groq import Groq  # Import the brain
 
 # --- CONFIGURATION ---
 # PASTE YOUR GROQ API KEY HERE inside the quotes
-GROQ_API_KEY = "PASTE_YOUR_GSK_KEY_HERE"
+GROQ_API_KEY = "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"
 
 # --- Page Configuration ---
 st.set_page_config(
