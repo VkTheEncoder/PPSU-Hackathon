@@ -47,7 +47,7 @@ def get_doctor_advice(disease_name):
                     "content": prompt,
                 }
             ],
-            model="llama3-8b-8192", # We use Llama 3 here
+            model="llama-3.3-70b-versatile", # NEW: Smarter and currently supported
         )
         return chat_completion.choices[0].message.content
     except Exception as e:
