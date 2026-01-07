@@ -1,105 +1,138 @@
 import streamlit as st
 from ultralytics import YOLO
 from PIL import Image
-from groq import Groq  # Import the brain
+from groq import Groq
 
 # --- CONFIGURATION ---
-# PASTE YOUR GROQ API KEY HERE inside the quotes
+# Replace with your actual key
 GROQ_API_KEY = "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"
 
 # --- Page Configuration ---
 st.set_page_config(
-    page_title="SkinCare AI Assistant",
+    page_title="SkinCare AI Chat",
     page_icon="🩺",
-    layout="wide"  # Changed to wide for better reading
+    layout="wide"
 )
 
-# --- Initialize AI Models ---
+# --- Initialize Session State (Memory) ---
+# This keeps the chat history alive even when you click buttons
+if "messages" not in st.session_state:
+    st.session_state.messages = []
+
+if "detected_disease" not in st.session_state:
+    st.session_state.detected_disease = None
+
+# --- Load Models ---
 @st.cache_resource
 def load_yolo_model():
-    # Load your BEST trained model
     return YOLO("best.pt")
 
-def get_doctor_advice(disease_name):
+def get_ai_response(user_question, disease_context):
     """
-    This function sends the disease name to Llama 3 and gets a detailed response.
+    Sends the chat history and context to Groq (Llama 3)
     """
     try:
         client = Groq(api_key=GROQ_API_KEY)
         
-        # This is the prompt we send to the AI
-        prompt = f"""
-        You are an expert Dermatologist. A patient has been diagnosed with '{disease_name}' by an AI screening tool.
-        Please provide a detailed response in the following format:
+        # System prompt: We tell the AI its role and the context (the disease)
+        system_prompt = f"""
+        You are an expert Dermatologist AI Assistant.
+        The user has uploaded a skin image which was detected as: '{disease_context}'.
         
-        1. **What is it?** (A simple explanation of the condition)
-        2. **Symptoms:** (Common symptoms)
-        3. **Potential Treatments:** (Medical and home remedies)
-        4. **When to see a doctor:** (Urgent warning signs)
-        
-        Keep the tone professional, empathetic, and informative. Use bullet points.
+        Your Goal: Answer the user's questions specifically about '{disease_context}'.
+        - If they ask for treatments, give advice relevant to {disease_context}.
+        - If they ask if it is contagious, answer based on {disease_context}.
+        - Keep answers concise, professional, and helpful.
+        - Always include a medical disclaimer if giving specific treatment advice.
         """
 
+        # Prepare the messages list for the API
+        messages_for_api = [
+            {"role": "system", "content": system_prompt}
+        ]
+        
+        # Add the conversation history so the AI remembers previous questions
+        for msg in st.session_state.messages:
+            messages_for_api.append({"role": msg["role"], "content": msg["content"]})
+        
+        # Add the user's new current question
+        messages_for_api.append({"role": "user", "content": user_question})
+
+        # Get response from Llama 3
         chat_completion = client.chat.completions.create(
-            messages=[
-                {
-                    "role": "user",
-                    "content": prompt,
-                }
-            ],
-            model="llama-3.3-70b-versatile", # NEW: Smarter and currently supported
+            messages=messages_for_api,
+            model="llama-3.3-70b-versatile", # Updated to the latest working model
+            temperature=0.7
         )
         return chat_completion.choices[0].message.content
     except Exception as e:
-        return f"Error connecting to Llama 3: {e}. Check your API Key."
+        return f"Error: {e}"
 
-# --- Main App Interface ---
-st.title("🩺 AI Skin Disease Consultant")
-st.markdown("### Detect. Understand. Treat.")
-st.write("Upload a photo of the skin condition. Our AI will analyze it and provide medical context.")
+# --- Main Layout ---
+st.title("🩺 AI Skin Doctor Chat")
 
-col1, col2 = st.columns([1, 1])
+col1, col2 = st.columns([1, 1.5], gap="medium")
 
+# === COLUMN 1: IMAGE & DETECTION ===
 with col1:
-    st.header("📸 Image Upload")
-    uploaded_file = st.file_uploader("Choose an image...", type=["jpg", "jpeg", "png"])
+    st.subheader("1. Upload & Scan")
+    uploaded_file = st.file_uploader("Upload Skin Image", type=["jpg", "jpeg", "png"])
     
     if uploaded_file:
         image = Image.open(uploaded_file)
-        st.image(image, caption='Uploaded Image', use_column_width=True)
+        st.image(image, caption='Uploaded Image', use_container_width=True)
         
-        analyze_button = st.button('🔍 Analyze Condition', use_container_width=True)
+        if st.button('🔍 Analyze Image', use_container_width=True):
+            with st.spinner('Scanning image...'):
+                # 1. Run YOLO
+                model = load_yolo_model()
+                results = model.predict(image)
+                r = results[0]
+                disease_name = r.names[r.probs.top1]
+                confidence = r.probs.top1conf.item()
+                
+                # 2. Save to Memory
+                st.session_state.detected_disease = disease_name
+                
+                # 3. Start the Chat with a greeting
+                initial_msg = f"I have analyzed the image. \n\n**Detected Condition:** {disease_name} ({confidence*100:.1f}% confidence).\n\nYou can now ask me any questions about this condition (e.g., 'Is it contagious?', 'Home remedies?', 'What causes this?')."
+                
+                # Clear old chat and add new greeting
+                st.session_state.messages = [{"role": "assistant", "content": initial_msg}]
+                st.rerun() # Refresh to show the chat
 
-# --- Logic: If Button Clicked ---
-if uploaded_file and analyze_button:
-    with col1:
-        with st.spinner('👀 The AI "Eyes" (YOLO) are looking...'):
-            model = load_yolo_model()
-            results = model.predict(image)
-            r = results[0]
-            pred_class_index = r.probs.top1
-            confidence = r.probs.top1conf.item()
-            disease_name = r.names[pred_class_index]
+# === COLUMN 2: CHAT INTERFACE ===
+with col2:
+    st.subheader("2. Chat with the AI Doctor")
+    
+    # Logic: Only show chat if a disease has been detected OR if we just want a general chat
+    if st.session_state.detected_disease:
+        st.info(f"Context: Discussing **{st.session_state.detected_disease}**")
+    else:
+        st.info("Please upload and analyze an image to start a specific consultation.")
 
-        # Display Detection Result
-        if confidence > 0.4: # Only show if confidence is decent
-            st.success(f"**Detected:** {disease_name}")
-            st.info(f"Confidence: {confidence * 100:.2f}%")
+    # 1. Display Chat History
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
+
+    # 2. Chat Input Box
+    if prompt := st.chat_input("Ask a follow-up question..."):
+        # Display user message immediately
+        with st.chat_message("user"):
+            st.markdown(prompt)
+        # Add to history
+        st.session_state.messages.append({"role": "user", "content": prompt})
+
+        # 3. Get AI Response
+        if st.session_state.detected_disease:
+            with st.spinner("Thinking..."):
+                response = get_ai_response(prompt, st.session_state.detected_disease)
+                
+                with st.chat_message("assistant"):
+                    st.markdown(response)
+                
+                # Add AI response to history
+                st.session_state.messages.append({"role": "assistant", "content": response})
         else:
-            st.warning(f"**Potential Match:** {disease_name}")
-            st.write(f"Confidence: {confidence * 100:.2f}% (Uncertain)")
-
-    # --- THE NEW PART: LLAMA 3 ---
-    with col2:
-        st.header("📝 Doctor's Analysis")
-        st.write("Generating report using **Llama 3 AI**...")
-        
-        with st.spinner('🧠 The AI "Brain" (Llama 3) is thinking...'):
-            # Call our function to get text
-            doctor_response = get_doctor_advice(disease_name)
-            
-            # Display the text nicely
-            st.markdown("---")
-            st.markdown(doctor_response)
-            st.markdown("---")
-            st.warning("⚠️ **Disclaimer:** This is an AI-generated report. It is not a substitute for professional medical advice. Please visit a real doctor.")
+            st.error("Please analyze an image first so I know what we are talking about!")
