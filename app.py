@@ -87,10 +87,11 @@ def get_chat_response(user_question, disease_context):
     """
     Handles chat questions based ONLY on the disease name.
     """
+    
     try:
         model = genai.GenerativeModel('gemini-3-flash-preview')
         
-        prompt = f"""
+        history_text = f"""
         You are an intelligent Dermatologist Assistant and you have to use easy english language so every user can understand properly.
         
         Context: The patient has a skin condition diagnosed as: "{disease_context}".
@@ -103,10 +104,20 @@ def get_chat_response(user_question, disease_context):
         4. Keep answers direct, conversational, and professional.
         5. If the user asks for a short answer, keep it under 2 sentences.
 	    6. Do NOT repeat the disclaimer in every single message.
+                --- Conversation History ---
         """
         
-        # CHANGED: We send ONLY the prompt (text), no image.
-        response = model.generate_content(prompt)
+        # 2. Add the Memory (Loop through past messages)
+        # We skip the very first message because that is the big "Initial Report" which might confuse the flow
+        for msg in st.session_state.messages[1:]: 
+            role_label = "User" if msg["role"] == "user" else "AI"
+            history_text += f"\n{role_label}: {msg['content']}"
+            
+        # 3. Add the New Question
+        history_text += f"\nUser: {user_question}\nAI:"
+        
+        # 4. Send the FULL history to Gemini
+        response = model.generate_content(history_text)
         return response.text
     except Exception as e:
         return f"Error connecting to Google Gemini: {e}"
