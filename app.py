@@ -5,7 +5,7 @@ import google.generativeai as genai
 
 # --- CONFIGURATION ---
 # PASTE YOUR GOOGLE API KEY HERE
-GOOGLE_API_KEY = "AIzaSyCESMVO_w2ZtYjOJz8elB0e-U8pVFIszsg"
+GOOGLE_API_KEY = "AIzaSyC1nkc5o4h1oNmyagubXUXWtdHfWrRg2nk"
 
 # Configure Google Gemini
 genai.configure(api_key=GOOGLE_API_KEY)
@@ -51,7 +51,7 @@ def generate_initial_report(disease_context):
         model = genai.GenerativeModel('gemini-3-flash-preview')
         
         prompt = f"""
-        You are an expert Dermatologist.
+        You are an expert Dermatologist and you have to use easy english language so every user can understand properly.
         
         Task: Create a structured initial medical report for the patient.
         
@@ -91,7 +91,7 @@ def get_chat_response(user_question, disease_context):
         model = genai.GenerativeModel('gemini-3-flash-preview')
         
         prompt = f"""
-        You are an intelligent Dermatologist Assistant.
+        You are an intelligent Dermatologist Assistant and you have to use easy english language so every user can understand properly.
         
         Context: The patient has a skin condition diagnosed as: "{disease_context}".
         User Query: "{user_question}"
@@ -174,7 +174,7 @@ if prompt := st.chat_input("Ask a follow-up question (e.g., 'Is it contagious?')
 
         # AI Response
         with st.chat_message("assistant"):
-            with st.spinner("Dr. AI is typing..."):
+            with st.spinner("Thinking..."):
                 response = get_chat_response(prompt, st.session_state.detected_disease)
                 st.markdown(response)
         st.session_state.messages.append({"role": "assistant", "content": response})
