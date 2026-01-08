@@ -175,7 +175,7 @@ if prompt := st.chat_input("Ask a follow-up question (e.g., 'Is it contagious?')
         # AI Response
         with st.chat_message("assistant"):
             with st.spinner("Dr. AI is typing..."):
-                response = get_chat_response(prompt, st.session_state.current_image, st.session_state.detected_disease)
+                response = get_chat_response(prompt, st.session_state.detected_disease)
                 st.markdown(response)
         st.session_state.messages.append({"role": "assistant", "content": response})
     else:
