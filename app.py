@@ -133,7 +133,7 @@ with st.sidebar:
         
         with st.spinner('2. Generating Medical Report (Gemini)...'):
             # Step C: Generate the Detailed Report
-            initial_report = generate_initial_report(image, disease_name)
+            initial_report = generate_initial_report(disease_name)
             
             # --- THE FIX: Create the "Analysis Result" Header ---
             analysis_header = f"""
