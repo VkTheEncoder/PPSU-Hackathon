@@ -39,11 +39,15 @@ def load_yolo_model():
 
 # --- AI FUNCTIONS ---
 
-def generate_initial_report(image, disease_context):
+# --- AI FUNCTIONS ---
+
+def generate_initial_report(disease_context):
     """
-    Generates the FIRST detailed report immediately after analysis.
+    Generates the report based ONLY on the YOLO diagnosis (Text-only).
+    Gemini does NOT look at the image.
     """
     try:
+        # We can use a text-only model or the same flash model (it handles text too)
         model = genai.GenerativeModel('gemini-3-flash-preview')
         
         prompt = f"""
@@ -51,67 +55,58 @@ def generate_initial_report(image, disease_context):
         
         Task: Create a structured initial medical report for the patient.
         
-        Inputs:
-        1. User's Image (Attached)
-        2. AI Detection Hint: "{disease_context}" (This comes from a YOLO model, verify it visually).
+        Input Context:
+        The patient has been diagnosed with: "{disease_context}"
+        (This diagnosis comes from a specialized AI tool. Accept it as 100% accurate.)
         
         Output Format (Use Markdown):
-        ## 🩺 Diagnosis Report
-        
-        **Visual Assessment:** [Confirm if the image matches "{disease_context}" or looks like something else.]
+        ## 🩺 Diagnosis Report: {disease_context}
         
         ### 📖 What is it?
-        [Brief explanation of the condition]
+        [Brief explanation of {disease_context}]
         
         ### ⚠️ Common Symptoms
-        * [Symptom 1]
-        * [Symptom 2]
+        * [Symptom 1 of this disease]
+        * [Symptom 2 of this disease]
         
         ### 💊 Suggested Treatments & Care
         * [Treatment 1]
         * [Home Remedy / Care Tip]
         
         ---
-        *Disclaimer: This is an AI analysis. Please consult a doctor for a real prescription.*
+        *Disclaimer: This is an AI analysis based on the detected label. Please consult a doctor.*
         """
         
-        response = model.generate_content([prompt, image])
+        # CHANGED: We send ONLY the prompt (text), no image.
+        response = model.generate_content(prompt)
         return response.text
     except Exception as e:
         return f"Error generating report: {e}"
 
-def get_chat_response(user_question, image, disease_context):
+def get_chat_response(user_question, disease_context):
     """
-    Handles follow-up questions in the chat with smart intent analysis and visual verification.
+    Handles chat questions based ONLY on the disease name.
     """
     try:
-        # Use your available Gemini model
         model = genai.GenerativeModel('gemini-3-flash-preview')
         
         prompt = f"""
         You are an intelligent Dermatologist Assistant.
         
-        --- INPUT DATA ---
-        1. **User Image:** (Attached)
-        2. **Automated YOLO Detection:** "{disease_context}" (This is a preliminary AI guess. It might be wrong.)
-        3. **User Query:** "{user_question}"
+        Context: The patient has a skin condition diagnosed as: "{disease_context}".
+        User Query: "{user_question}"
         
-        --- YOUR INSTRUCTIONS ---
-        1. **Analyze the User's Intent First:** - If they ask "Is this correct?" or "Are you sure?", look at the image and agree or disagree based on your own visual analysis (Gemini Vision).
-           - If they ask "Tell me the name", give ONLY the name.
-           - If they ask about a DIFFERENT disease, answer about that disease. Do not force the conversation back to "{disease_context}" if the user has moved on.
-           
-        2. **Visual Verification:** - Trust your own eyes more than the YOLO detection. 
-           - If the image clearly shows "Hives" but YOLO said "Eczema", politely correct it in your answer.
-
-        3. **Response Style:**
-           - Be direct and conversational. 
-           - Do NOT repeat the disclaimer in every single message.
-           - If the user asks for a short answer, keep it under 2 sentences.
+        Instructions:
+        1. Answer the user's question specifically regarding "{disease_context}".
+        2. Do NOT ask to see the image or try to verify the diagnosis. Assume "{disease_context}" is correct.
+	    3. If they ask about a DIFFERENT disease, answer about that disease. Do not force the conversation back to "{disease_context}" if the user has moved on.
+        4. Keep answers direct, conversational, and professional.
+        5. If the user asks for a short answer, keep it under 2 sentences.
+	    6. Do NOT repeat the disclaimer in every single message.
         """
         
-        # Send text + image to Gemini
-        response = model.generate_content([prompt, image])
+        # CHANGED: We send ONLY the prompt (text), no image.
+        response = model.generate_content(prompt)
         return response.text
     except Exception as e:
         return f"Error connecting to Google Gemini: {e}"
